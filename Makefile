@@ -1,13 +1,13 @@
 # Author: Norman Zhi (normanzyb@gmail.com)
 
 PRG	= mcx
-OBJ	= main.o network.o
+OBJ	= main.o mutex.o network.o networkrequests.o networkclient.o
 PKG	= libuv libcrypto
 
 #CROSS	= mipsel-linux-
 FLAGS		= -g -O0 -Wall -Werror -Wno-error=unused-variable
 CFLAGS		= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=gnu99
-CXXFLAGS	= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=c++11
+CXXFLAGS	= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=c++14
 LDFLAGS		= -g -O0
 LIBS		= $(shell pkg-config --libs $(PKG)) -lev -lpthread -lm
 
@@ -20,7 +20,7 @@ all: $(PRG)
 
 .PHONY: run
 run: $(PRG)
-	./$(PRG) localhost 25565 zs.yjbeetle.com.cn 25565
+	gdb ./$(PRG) -ex 'run :: 25565 zs.yjbeetle.com.cn 25565'
 
 $(PRG): $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
