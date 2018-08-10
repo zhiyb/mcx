@@ -131,7 +131,6 @@ void Network::getServerInfo(uv_getaddrinfo_t *req,
 		n->server = server;
 	}
 
-	uv_freeaddrinfo(res);
 	uv_freeaddrinfo(req->addrinfo);
 	delete req;
 
@@ -148,6 +147,12 @@ void Network::serverAccept(uv_stream_t *server, int status)
 		throw std::runtime_error(uv_strerror(err));
 
 	Network *n = static_cast<Network *>(server->data);
-	NetworkClient *nc = new NetworkClient(server);
-	nc->connectTo(n->remote_name.c_str(), n->remote_port.c_str());
+	NetworkClient *nc = new NetworkClient(n);
+	try {
+		nc->accept(server);
+		nc->connectTo(n->remote_name.c_str(), n->remote_port.c_str());
+	} catch (std::exception &e) {
+		delete nc;
+		throw e;
+	}
 }

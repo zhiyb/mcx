@@ -1,6 +1,7 @@
 # Author: Norman Zhi (normanzyb@gmail.com)
 
 PRG	= mcx
+ARGS	= :: 25565 zs.yjbeetle.com.cn 25565
 OBJ	= main.o mutex.o network.o networkrequests.o networkclient.o
 PKG	= libuv libcrypto
 
@@ -20,7 +21,15 @@ all: $(PRG)
 
 .PHONY: run
 run: $(PRG)
-	gdb ./$(PRG) -ex 'run :: 25565 zs.yjbeetle.com.cn 25565'
+	./$(PRG) $(ARGS)
+
+.PHONY: gdb
+gdb: $(PRG)
+	gdb ./$(PRG) -ex 'run $(ARGS)'
+
+.PHONY: valgrind
+valgrind: $(PRG)
+	valgrind ./$(PRG) $(ARGS)
 
 $(PRG): $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
