@@ -8,7 +8,7 @@ PKG	= libuv libcrypto
 #CROSS	= mipsel-linux-
 FLAGS		= -g -O0 -Wall -Werror -Wno-error=unused-variable
 CFLAGS		= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=gnu99
-CXXFLAGS	= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=c++14
+CXXFLAGS	= $(FLAGS) $(shell pkg-config --cflags $(PKG)) -std=gnu++14
 LDFLAGS		= -g -O0
 LIBS		= $(shell pkg-config --libs $(PKG)) -lev -lpthread -lm
 

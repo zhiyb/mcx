@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	logger->set_level(spdlog::level::debug);
 
 	if (argc != 5) {
-		logger->error("Need {} arguments", 4);
+		LOG(error, "Need {} arguments", 4);
 		return 1;
 	}
 

@@ -95,27 +95,27 @@ void Network::getServerInfo(uv_getaddrinfo_t *req,
 	for (pa = res; pa != 0; pa = pa->ai_next) {
 		int err = 0;
 		if ((err = uv_tcp_init_ex(req->loop, server, pa->ai_family))) {
-			logger->warn("{}", uv_strerror(err));
+			LOG(warn, "{}", uv_strerror(err));
 			continue;
 		}
 
 		// Retrieve fileno for setsockopt
 		int sfd = 0, flag = 1;
 		if ((err = uv_fileno((uv_handle_t *)server, &sfd)))
-			logger->warn("{}", uv_strerror(err));
+			LOG(warn, "{}", uv_strerror(err));
 		else if ((err = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR,
 				(const char *)&flag, sizeof(int))))
-			logger->warn("{}", strerror(err));
+			LOG(warn, "{}", strerror(err));
 
 		if ((err = uv_tcp_bind(server, pa->ai_addr, 0))) {
-			logger->warn("{}", uv_strerror(err));
+			LOG(warn, "{}", uv_strerror(err));
 			uv_close((uv_handle_t *)server, 0);
 			continue;
 		}
 
 		if ((err = uv_listen((uv_stream_t *)server, 16,
 				serverAccept))) {
-			logger->warn("{}", uv_strerror(err));
+			LOG(warn, "{}", uv_strerror(err));
 			uv_close((uv_handle_t *)server, 0);
 			continue;
 		}
@@ -124,9 +124,9 @@ void Network::getServerInfo(uv_getaddrinfo_t *req,
 
 	if (pa) {
 		try {
-			logger->info("Listening at {}", getString(pa->ai_addr));
+			LOG(info, "Listening at {}", getString(pa->ai_addr));
 		} catch (std::exception &e) {
-			logger->warn("{}", e.what());
+			LOG(warn, "{}", e.what());
 		}
 		n->server = server;
 	}

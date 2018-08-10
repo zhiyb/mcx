@@ -12,12 +12,12 @@ NetworkClient::NetworkClient(Network *n)
 NetworkClient::~NetworkClient()
 {
 	if (remote) {
-		logger->error("Destructed with remote connection");
+		LOG(error, "Destructed with remote connection");
 		uv_close((uv_handle_t *)remote, 0);
 		delete remote;
 	}
 	if (client) {
-		logger->error("Destructed with client connection");
+		LOG(error, "Destructed with client connection");
 		uv_close((uv_handle_t *)client, 0);
 		delete client;
 	}
@@ -49,21 +49,20 @@ void NetworkClient::accept(uv_stream_t *server)
 	struct sockaddr *pa = (struct sockaddr *)&addr;
 	int len = sizeof(addr);
 	if ((err = uv_tcp_getpeername(client, pa, &len))) {
-		logger->warn("{}", uv_strerror(err));
+		LOG(warn, "{}", uv_strerror(err));
 	} else {
 		try {
-			logger->info("Client {} from {}",
+			LOG(info, "Client {} from {}",
 					(void *)this, Network::getString(pa));
 		} catch (std::exception &e) {
-			logger->warn("{}", e.what());
+			LOG(warn, "{}", e.what());
 		}
 	}
 
 	if ((err = uv_tcp_nodelay(client, 1)))
-		logger->warn("{}", uv_strerror(err));
+		LOG(warn, "{}", uv_strerror(err));
 
 	this->client = client;
-	read(true);
 }
 
 void NetworkClient::connectTo(const char *name, const char *port)
@@ -82,7 +81,7 @@ void NetworkClient::close()
 {
 	// Gracefully shutdown
 	if (!reqs.busy() && !client && !remote) {
-		logger->info("Client {} connection closed", (void *)this);
+		LOG(info, "Client {} connection closed", (void *)this);
 		delete this;
 	} else if (!shutdown) {
 		shutdown = true;
@@ -123,14 +122,13 @@ void NetworkClient::read(uv_stream_t *stream,
 		ssize_t nread, const uv_buf_t *buf)
 {
 	NetworkClient *nc = (NetworkClient *)stream->data;
+	bool client = stream == (uv_stream_t *)nc->client;
 	if (nread < 0) {
-		logger->warn("{}", uv_strerror(nread));
+		LOG(warn, "{}", uv_strerror(nread));
 		nc->close();
 		return;
 	}
-
-	logger->debug("{}: {} bytes read", __func__, nread);
-	nc->write(stream != (uv_stream_t *)nc->client, *buf);
+	nc->write(!client, (uv_buf_t){.base = buf->base, .len = (size_t)nread});
 }
 
 void NetworkClient::write(bool client, uv_buf_t buf)
@@ -144,7 +142,7 @@ void NetworkClient::write(bool client, uv_buf_t buf)
 	int err = uv_write(req, ps, &buf, 1, write);
 	if (err) {
 		reqs.removeRequest((uv_req_t *)req);
-		logger->warn("{}", uv_strerror(err));
+		LOG(warn, "{}", uv_strerror(err));
 		delete req;
 		close();
 	}
@@ -159,7 +157,7 @@ void NetworkClient::write(uv_write_t *req, int status)
 	delete req;
 
 	if (status) {
-		logger->warn("{}", uv_strerror(status));
+		LOG(warn, "{}", uv_strerror(status));
 		nc->close();
 		return;
 	}
@@ -167,12 +165,12 @@ void NetworkClient::write(uv_write_t *req, int status)
 	// Buffer should be from the opposite side
 	auto &vbuf = client ? nc->rbuf : nc->cbuf;
 	if (!vbuf.front()) {
-		logger->warn("Buffer invalid");
+		LOG(warn, "Buffer invalid");
 	} else if (base == vbuf.front()->data()) {
 		delete vbuf.front();
 		vbuf.pop_front();
 	} else {
-		logger->warn("Buffer out-of-order");
+		LOG(warn, "Buffer out-of-order");
 		vbuf.remove_if([=](auto *pb) {
 			if (pb->data() == base) {
 				delete pb;
@@ -204,7 +202,7 @@ void NetworkClient::getServerInfo(uv_getaddrinfo_t *req,
 		for (pa = res; pa != 0; pa = pa->ai_next) {
 			int err = 0;
 			if ((err = uv_tcp_init(req->loop, remote))) {
-				logger->warn("{}", uv_strerror(err));
+				LOG(warn, "{}", uv_strerror(err));
 				continue;
 			}
 
@@ -213,7 +211,7 @@ void NetworkClient::getServerInfo(uv_getaddrinfo_t *req,
 					pa->ai_addr, remoteConnect))) {
 				nc->reqs.removeRequest(
 						(uv_req_t *)&nc->connect);
-				logger->warn("{}", uv_strerror(err));
+				LOG(warn, "{}", uv_strerror(err));
 				uv_close((uv_handle_t *)remote, 0);
 				continue;
 			}
@@ -234,6 +232,7 @@ void NetworkClient::getServerInfo(uv_getaddrinfo_t *req,
 	uv_freeaddrinfo(req->addrinfo);
 	delete req;
 	nc->read(false);
+	nc->read(true);
 }
 
 void NetworkClient::remoteConnect(uv_connect_t *req, int status)
@@ -248,12 +247,12 @@ void NetworkClient::remoteConnect(uv_connect_t *req, int status)
 	struct sockaddr *pa = (struct sockaddr *)&addr;
 	int len = sizeof(addr);
 	if ((status = uv_tcp_getpeername(nc->remote, pa, &len))) {
-		logger->warn("{}", uv_strerror(status));
+		LOG(warn, "{}", uv_strerror(status));
 	} else {
 		try {
-			logger->info("Connected to {}", Network::getString(pa));
+			LOG(info, "Connected to {}", Network::getString(pa));
 		} catch (std::exception &e) {
-			logger->warn("{}", e.what());
+			LOG(warn, "{}", e.what());
 		}
 	}
 }

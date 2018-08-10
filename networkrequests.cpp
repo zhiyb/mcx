@@ -6,7 +6,7 @@
 NetworkRequests::~NetworkRequests()
 {
 	if (reqs.size())
-		logger->error("Destructed with {} pending requests",
+		LOG(error, "Destructed with {} pending requests",
 				reqs.size());
 }
 
@@ -31,10 +31,18 @@ void NetworkRequests::removeRequest(uv_req_t *req)
 void NetworkRequests::cancelAll()
 {
 	mutex.lock();
-	for (auto req: reqs) {
-		int err = uv_cancel(req);
-		if (err)
-			logger->warn("{}", uv_strerror(err));
+	for (auto *req: reqs) {
+		int err;
+		switch (req->type) {
+		case UV_FS:
+		case UV_GETADDRINFO:
+		case UV_GETNAMEINFO:
+		case UV_WORK:
+			if ((err = uv_cancel(req)))
+				LOG(warn, "{}", uv_strerror(err));
+		default:
+			break;
+		}
 	}
 	mutex.unlock();
 }
@@ -43,6 +51,6 @@ void NetworkRequests::print()
 {
 	mutex.lock();
 	for (auto req: reqs)
-		logger->debug("{}: {}", __PRETTY_FUNCTION__, req->type);
+		LOG(debug, "{}: {}", __PRETTY_FUNCTION__, req->type);
 	mutex.unlock();
 }
