@@ -3,6 +3,8 @@
 #include <vector>
 #include <uv.h>
 #include "networkrequests.h"
+#include "client.h"
+#include "buffer.h"
 
 #define BUFFER_SIZE	4096
 
@@ -16,11 +18,12 @@ public:
 
 	void accept(uv_stream_t *server);
 	void connectTo(const char *name, const char *port);
+	void close();
+
+	void write(bool client, uv_buf_t buf);
 
 private:
 	void read(bool client);
-	void write(bool client, uv_buf_t buf);
-	void close();
 
 	// Callbacks
 	static void alloc(uv_handle_t *handle,
@@ -35,8 +38,10 @@ private:
 
 	Network *n = 0;
 	NetworkRequests reqs;
+	Client c;
 	uv_tcp_t *client = 0, *remote = 0;
 	uv_connect_t connect;
-	std::list<std::vector<char> *> cbuf, rbuf;
+	Buffer<char> cbuf, rbuf;
+	//std::list<std::vector<char> *> cbuf, rbuf;
 	bool shutdown = false;
 };

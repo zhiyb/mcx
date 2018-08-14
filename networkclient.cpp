@@ -21,10 +21,6 @@ NetworkClient::~NetworkClient()
 		uv_close((uv_handle_t *)client, 0);
 		delete client;
 	}
-	for (auto *pb: cbuf)
-		delete pb;
-	for (auto *pb: rbuf)
-		delete pb;
 	n->removeClient(this);
 }
 
@@ -63,6 +59,8 @@ void NetworkClient::accept(uv_stream_t *server)
 		LOG(warn, "{}", uv_strerror(err));
 
 	this->client = client;
+	c.init(this, server->loop);
+	read(true);
 }
 
 void NetworkClient::connectTo(const char *name, const char *port)
@@ -80,7 +78,7 @@ void NetworkClient::connectTo(const char *name, const char *port)
 void NetworkClient::close()
 {
 	// Gracefully shutdown
-	if (!reqs.busy() && !client && !remote) {
+	if (c.shutdown() && !reqs.busy() && !client && !remote) {
 		LOG(info, "Client {} connection closed", (void *)this);
 		delete this;
 	} else if (!shutdown) {
@@ -107,7 +105,7 @@ void NetworkClient::alloc(uv_handle_t *handle,
 	NetworkClient *nc = (NetworkClient *)handle->data;
 	bool client = handle == (uv_handle_t *)nc->client;
 	auto &vbuf = client ? nc->cbuf : nc->rbuf;
-	vbuf.push_back(pbuf);
+	vbuf.enqueue(pbuf);
 }
 
 void NetworkClient::read(bool client)
@@ -128,7 +126,21 @@ void NetworkClient::read(uv_stream_t *stream,
 		nc->close();
 		return;
 	}
-	nc->write(!client, (uv_buf_t){.base = buf->base, .len = (size_t)nread});
+	//uv_buf_t dbuf = {.base = buf->base, .len = (size_t)nread};
+	if (!client)
+		return;
+	// Dequeue buffer
+	auto &vbuf = client ? nc->cbuf : nc->rbuf;
+	std::vector<char> *p = 0;
+	while ((p = vbuf.dequeue()) != 0 && p->data() != buf->base) {
+		LOG(warn, "Buffer out-of-order");
+		delete p;
+	}
+	if (!p)
+		LOG(warn, "Buffer invalid");
+	else
+		nc->c.read(p);
+	//nc->write(!client, dbuf);
 }
 
 void NetworkClient::write(bool client, uv_buf_t buf)
@@ -162,6 +174,7 @@ void NetworkClient::write(uv_write_t *req, int status)
 		return;
 	}
 
+#if 0
 	// Buffer should be from the opposite side
 	auto &vbuf = client ? nc->rbuf : nc->cbuf;
 	if (!vbuf.front()) {
@@ -179,6 +192,7 @@ void NetworkClient::write(uv_write_t *req, int status)
 				return false;
 			}});
 	}
+#endif
 }
 
 void NetworkClient::getServerInfo(uv_getaddrinfo_t *req,

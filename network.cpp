@@ -150,9 +150,10 @@ void Network::serverAccept(uv_stream_t *server, int status)
 	NetworkClient *nc = new NetworkClient(n);
 	try {
 		nc->accept(server);
-		nc->connectTo(n->remote_name.c_str(), n->remote_port.c_str());
+		//nc->connectTo(n->remote_name.c_str(), n->remote_port.c_str());
 	} catch (std::exception &e) {
 		delete nc;
 		throw e;
 	}
+	LOG(debug, "{} clients connected", n->clients.size());
 }

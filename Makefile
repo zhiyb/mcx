@@ -1,8 +1,9 @@
 # Author: Norman Zhi (normanzyb@gmail.com)
 
 PRG	= mcx
-ARGS	= :: 25565 zs.yjbeetle.com.cn 25565
-OBJ	= main.o mutex.o network.o networkrequests.o networkclient.o
+ARGS	= :: 25565 zs.yjbeetle.com.cn 25566
+OBJ	= main.o mutex.o network.o networkrequests.o networkclient.o client.o \
+	  parsers.o
 PKG	= libuv libcrypto
 
 #CROSS	= mipsel-linux-
