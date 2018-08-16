@@ -8,6 +8,7 @@
 
 #define BUFFER_SIZE	4096
 
+class Config;
 class Network;
 
 class NetworkClient
@@ -16,14 +17,15 @@ public:
 	NetworkClient(Network *n);
 	~NetworkClient();
 
+	Config &config() const;
+
 	void accept(uv_stream_t *server);
-	void connectTo(const char *name, const char *port);
 	void close();
 
-	void write(bool client, uv_buf_t buf);
+	void write(std::vector<char> *buf);
 
 private:
-	void read(bool client);
+	void read();
 
 	// Callbacks
 	static void alloc(uv_handle_t *handle,
@@ -31,17 +33,13 @@ private:
 	static void read(uv_stream_t *stream,
 			ssize_t nread, const uv_buf_t *buf);
 	static void write(uv_write_t *req, int status);
-	static void getServerInfo(uv_getaddrinfo_t *req,
-			int status, struct addrinfo *res);
-	static void remoteConnect(uv_connect_t *req, int status);
 	static void close(uv_handle_t *handle);
 
 	Network *n = 0;
 	NetworkRequests reqs;
 	Client c;
-	uv_tcp_t *client = 0, *remote = 0;
+	uv_tcp_t *client = 0;
 	uv_connect_t connect;
-	Buffer<char> cbuf, rbuf;
-	//std::list<std::vector<char> *> cbuf, rbuf;
+	Buffer<char> cbuf;
 	bool shutdown = false;
 };

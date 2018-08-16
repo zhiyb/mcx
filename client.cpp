@@ -6,7 +6,7 @@
 
 Client::Client()
 {
-	parsers.setClient(this);
+	parsers.init(this);
 }
 
 Client::~Client()
@@ -33,8 +33,15 @@ void Client::init(NetworkClient *nc, uv_loop_t *loop)
 	this->nc = nc;
 }
 
+Config &Client::config() const
+{
+	return nc->config();
+}
+
 bool Client::shutdown()
 {
+	if (!parsers.shutdown())
+		return false;
 	_shutdown = true;
 	switch (threadStatus) {
 	case Uninitialised:
@@ -66,7 +73,8 @@ void Client::read(std::vector<char> *buf)
 	// Single thread identify mode
 	if (threadStatus == Uninitialised) {
 		rd.buf.enqueue(buf);
-		if (!parsers.identify(rd.buf.combine()))
+		uv_buf_t buf = rd.buf.combine();
+		if (!(parser = parsers.identify(buf.base, buf.len)))
 			// TODO: Timeout / data length limit
 			return;
 		threadStatus = Initialising;
@@ -94,16 +102,14 @@ void Client::async()
 	}
 
 	// Write event
-	if (wr.threadBuf.empty())
+	if (!wr.threadBuf)
 		return;
-	Buffer<char> buf;
 	wr.mtx.lock();
-	wr.threadBuf.swap(buf);
+	wr.threadBuf.swap(wr.buf);
 	wr.mtx.unlock();
 
-	buf.combine();
-	auto *p = buf.dequeue();
-	wr.buf.enqueue(p);
+	wr.buf.combine();
+	nc->write(wr.buf.dequeue());
 }
 
 void Client::async(uv_async_t *handle)
@@ -114,9 +120,17 @@ void Client::async(uv_async_t *handle)
 
 void Client::write(std::vector<char> *buf)
 {
+	// Single thread identify mode
+	if (threadStatus == Uninitialised) {
+		// TODO
+		LOG(error, "Unimplemented");
+		return;
+	}
+
 	wr.mtx.lock();
 	wr.threadBuf.enqueue(buf);
 	wr.mtx.unlock();
+	uv_async_send(&wr.async);
 }
 
 void Client::threadInit()
@@ -143,8 +157,17 @@ void Client::threadShutdown()
 {
 	if (threadStatus != Running)
 		return;
+	if (parser && !parser->shutdown())
+		return;
 	uv_close((uv_handle_t *)&rd.async, 0);
 	threadStatus = Closing;
+	LOG(debug, "{}", __PRETTY_FUNCTION__);
+}
+
+void Client::thread()
+{
+	parser->init(this, &threadLoop);
+	uv_run(&threadLoop, UV_RUN_DEFAULT);
 }
 
 void Client::thread(void *arg)
@@ -161,7 +184,7 @@ void Client::thread(void *arg)
 		goto quit;
 	}
 	c->threadStatus = Running;
-	LOG(info, "Thread {}: Running", static_cast<void *>(c));
+	LOG(debug, "Thread {}: Running", static_cast<void *>(c));
 
 	if (c->_shutdown)
 		c->threadShutdown();
@@ -169,7 +192,7 @@ void Client::thread(void *arg)
 		uv_async_send(&c->rd.async);
 
 	try {
-		uv_run(&c->threadLoop, UV_RUN_DEFAULT);
+		c->thread();
 	} catch (std::exception &e) {
 		LOG(warn, "Thread {}: Exception: {}",
 				static_cast<void *>(c), e.what());
@@ -188,7 +211,7 @@ quit:	c->wr.mtx.lock();
 	// Notify Client to shutdown
 	uv_async_send(&c->wr.async);
 	c->wr.mtx.unlock();
-	LOG(info, "Thread {}: Shutdown", static_cast<void *>(c));
+	LOG(debug, "Thread {}: Shutdown", static_cast<void *>(c));
 }
 
 void Client::threadAsync()
@@ -208,12 +231,7 @@ void Client::threadAsync()
 
 	while (!rd.threadBuf.empty()) {
 		auto *p = rd.threadBuf.dequeue();
-		char buf[p->size() + 1];
-		memcpy(buf, p->data(), p->size());
-		buf[p->size()] = 0;
-		delete p;
-		LOG(debug, "Thread {}: Read: {}",
-				static_cast<void *>(this), (char *)buf);
+		parser->read(p);
 	}
 }
 

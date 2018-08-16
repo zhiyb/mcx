@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <uv.h>
 #include "logging.h"
+#include "config.h"
 #include "network.h"
 
 std::shared_ptr<spdlog::logger> logger = spdlog::stdout_logger_mt("console");
@@ -18,10 +19,16 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	Config cfg;
+	cfg["server.host"] = argv[1];
+	cfg["server.port"] = argv[2];
+	cfg["mcx.remote.host"] = argv[3];
+	cfg["mcx.remote.port"] = argv[4];
+
 	uv_loop_t loop;
 	uv_loop_init(&loop);
 
-	Network *n = new Network(&loop, argv[1], argv[2], argv[3], argv[4]);
+	Network *n = new Network(&loop, &cfg);
 	uv_run(&loop, UV_RUN_DEFAULT);
 
 	delete n;

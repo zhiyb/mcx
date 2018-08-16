@@ -1,23 +1,21 @@
 #pragma once
 
+#include <vector>
 #include <unistd.h>
 #include <uv.h>
-#include "parser/parser.h"
 
 class Client;
+class Parser;
 
 class Parsers
 {
 public:
-	Parsers();
 	~Parsers();
 
-	void setClient(Client *c) {this->c = c;}
+	void init(Client *c);
 	bool shutdown();
-	void init(uv_loop_t *loop);
-	bool identify(const uv_buf_t &buf);
-	void read(const uv_buf_t &buf);
+	Parser *identify(void *buf, size_t len);
 
 private:
-	Client *c;
+	std::vector<Parser *> parsers;
 };

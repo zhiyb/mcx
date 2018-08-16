@@ -6,14 +6,16 @@
 #include "networkrequests.h"
 #include "mutex.h"
 
+class Config;
 class NetworkClient;
 
 class Network
 {
 public:
-	Network(uv_loop_t *loop, const char *name, const char *port,
-			const char *remote_name, const char *remote_port);
+	Network(uv_loop_t *loop, Config *cfg);
 	~Network();
+
+	Config &config() {return *cfg;}
 
 	NetworkRequests *requests() {return &reqs;}
 	void addClient(NetworkClient *client);
@@ -26,9 +28,9 @@ private:
 			int status, struct addrinfo *res);
 	static void serverAccept(uv_stream_t *server, int status);
 
-	std::string remote_name, remote_port;
 	uv_tcp_t *server = 0;
-	Mutex clients_mutex;
 	std::list<NetworkClient *> clients;
+	Mutex clients_mutex;
 	NetworkRequests reqs;
+	Config *cfg;
 };

@@ -6,7 +6,9 @@
 #include "parsers.h"
 #include "buffer.h"
 #include "mutex.h"
+#include "parser/parser.h"
 
+class Config;
 class NetworkClient;
 
 class Client
@@ -14,6 +16,8 @@ class Client
 public:
 	Client();
 	~Client();
+
+	Config &config() const;
 
 	// From NetworkClient thread
 	void init(NetworkClient *nc, uv_loop_t *loop);
@@ -35,6 +39,7 @@ private:
 	void threadDeinit();
 	void threadAsync();
 
+	void thread();
 	static void thread(void *arg);
 	static void threadAsync(uv_async_t *handle);
 
@@ -42,6 +47,7 @@ private:
 		Closing, Shutdown};
 
 	NetworkClient *nc = 0;
+	Parser *parser = 0;
 	Parsers parsers;
 	struct {
 		Buffer<char> buf, threadBuf;

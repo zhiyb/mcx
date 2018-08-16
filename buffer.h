@@ -18,6 +18,8 @@ public:
 	bool empty() {return !queue.size();}
 	uv_buf_t combine();
 
+	operator bool() {return !empty();}
+
 private:
 	std::queue<std::vector<T> *> queue;
 };
