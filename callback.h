@@ -22,7 +22,7 @@ public:
 	{
 		for (auto *p: cbc)
 			if (p->o == obj &&
-				static_cast<_Callback<T>>(p)->f == func)
+				static_cast<_Callback<T> *>(p)->f == func)
 					return *this;
 		cbc.push_back(new _Callback<T>(obj, func));
 		return *this;
@@ -34,7 +34,7 @@ public:
 		for (auto it = cbc.begin(); it != cbc.end(); it++) {
 			auto *p = *it;
 			if (p->o == obj &&
-				static_cast<_Callback<T>>(p)->f == func) {
+				static_cast<_Callback<T> *>(p)->f == func) {
 				delete p;
 				cbc.erase(it);
 				break;
@@ -55,12 +55,26 @@ public:
 		return *this;
 	}
 
-	R operator()(Args... args)
+	template <class T = R>
+	std::enable_if_t<std::is_void<T>::value, T>
+	operator()(Args... args)
 	{
 		for (auto f: cbf)
 			f(args...);
 		for (auto p: cbc)
 			(*p)(args...);
+	}
+
+	template <class T = R>
+	std::enable_if_t<not std::is_void<T>::value, T>
+	operator()(Args... args)
+	{
+		T ret = 0;
+		for (auto f: cbf)
+			ret |= f(args...);
+		for (auto p: cbc)
+			ret |= (*p)(args...);
+		return ret;
 	}
 
 private:
@@ -82,7 +96,7 @@ private:
 			_CallbackBase((void *)o), f(f) {}
 		virtual ~_Callback() {}
 		virtual R operator()(Args... args)
-		{return ((T *)_CallbackBase::o->*f)(args...);}
+		{return (static_cast<T *>(_CallbackBase::o)->*f)(args...);}
 
 		R (T::* f)(Args...);
 	};
