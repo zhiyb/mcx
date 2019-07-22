@@ -5,6 +5,8 @@
 #include "../networkrequests.h"
 #include "../buffer.h"
 
+class Stream;
+
 class ParserMCX: public Parser
 {
 public:
@@ -26,6 +28,7 @@ private:
 	void remoteWrite(std::vector<char> *buf);
 	void remoteWrite(uv_write_t *req);
 	void remoteClose();
+	bool test(void *p) {return false;}
 
 	// Callbacks
 	static void remoteInfo(uv_getaddrinfo_t *req,
@@ -41,5 +44,6 @@ private:
 	NetworkRequests reqs;
 	Buffer<char> rbuf, cbuf;
 	uv_tcp_t *remote = 0;
+	Stream *_remote = 0;
 	bool _shutdown = false;
 };

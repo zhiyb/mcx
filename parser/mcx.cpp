@@ -3,10 +3,14 @@
 #include "../logging.h"
 #include "../config.h"
 #include "../network.h"
+#include "../stream.h"
+#include "../callback.h"
 #include "mcx.h"
 
 ParserMCX::~ParserMCX()
 {
+	if (_remote)
+		delete _remote;
 	if (remote) {
 		LOG(error, "Destructed with remote connection");
 		uv_close((uv_handle_t *)remote, 0);
@@ -39,7 +43,9 @@ void ParserMCX::init()
 
 bool ParserMCX::shutdown()
 {
-	LOG(debug, "{}, {}, {}", __PRETTY_FUNCTION__, !!reqs, !!remote);
+	if (_remote && !_remote->shutdown())
+		return false;
+
 	bool shutdown = _shutdown;
 	_shutdown = true;
 
@@ -134,6 +140,11 @@ void ParserMCX::remoteConnect()
 
 	if ((err = uv_tcp_nodelay(remote, 1)))
 		LOG(warn, "{}", uv_strerror(err));
+
+	_remote = new Stream((uv_stream_t *)remote,
+			stoi(config()["mcx.remote.buffers"]));
+
+	_remote->readCallbacks().add(this, &ParserMCX::test);
 
 	// Remote read start
 	if ((err = uv_read_start((uv_stream_t *)remote,

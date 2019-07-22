@@ -10,11 +10,20 @@
 #include "network.h"
 #include "networkclient.h"
 #include "config.h"
+#include "callback.h"
 
 Network::Network(uv_loop_t *loop, Config *cfg): cfg(cfg)
 {
 	const char *name = (*cfg)["server.host"].c_str();
 	const char *port = (*cfg)["server.port"].c_str();
+
+	Callback<void(const char *)> testcbvoid;
+	testcbvoid(0);
+	Callback<int(const char *)> testcb;
+	testcb.add(this, &Network::test);
+	LOG(debug, "{}: {}", __PRETTY_FUNCTION__, testcb("www"));
+	testcb.remove(this, &Network::test);
+	LOG(debug, "{}: {}", __PRETTY_FUNCTION__, testcb("www"));
 
 	// Local server name resolution
 	uv_getaddrinfo_t *reqAddrInfo = new uv_getaddrinfo_t;
@@ -24,6 +33,12 @@ Network::Network(uv_loop_t *loop, Config *cfg): cfg(cfg)
 			name, port, 0);
 	if (err)
 		throw std::runtime_error(uv_strerror(err));
+}
+
+int Network::test(const char *str)
+{
+	LOG(debug, "{}: {}", __PRETTY_FUNCTION__, str);
+	return 39;
 }
 
 Network::~Network()

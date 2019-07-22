@@ -93,6 +93,7 @@ void NetworkClient::alloc(uv_handle_t *handle,
 void NetworkClient::read()
 {
 	int err = uv_read_start((uv_stream_t *)client, alloc, read);
+	readStopped = !!err;
 	if (err)
 		throw std::runtime_error(uv_strerror(err));
 }
@@ -120,6 +121,12 @@ void NetworkClient::read(uv_stream_t *stream,
 		LOG(warn, "Buffer invalid");
 	else
 		nc->c.read(p);
+}
+
+void NetworkClient::readStop()
+{
+	uv_read_stop((uv_stream_t *)client);
+	readStopped = true;
 }
 
 void NetworkClient::write(std::vector<char> *buf)

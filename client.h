@@ -54,6 +54,7 @@ private:
 		Mutex mtx;
 		uv_async_t async;
 	} rd, wr;
+	size_t bufNum = 0;
 	uv_thread_t tid;
 	uv_loop_t threadLoop;
 	volatile bool _shutdown = false;

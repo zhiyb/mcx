@@ -25,6 +25,9 @@ int main(int argc, char *argv[])
 	cfg["mcx.remote.host"] = argv[3];
 	cfg["mcx.remote.port"] = argv[4];
 
+	cfg["client.buffers"] = 2;
+	cfg["mcx.remote.buffers"] = 2;
+
 	uv_loop_t loop;
 	uv_loop_init(&loop);
 

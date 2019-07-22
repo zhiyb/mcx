@@ -3,7 +3,7 @@
 PRG	= mcx
 ARGS	= :: 25565 zs.yjbeetle.com.cn 25565
 OBJ	= main.o mutex.o network.o networkrequests.o networkclient.o client.o \
-	  parsers.o parser/parser.o
+	  stream.o parsers.o parser/parser.o
 PARSERS	= mcx
 OBJ	+= $(PARSERS:%=parser/%.o)
 PKG	= libuv libcrypto

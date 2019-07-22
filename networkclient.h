@@ -22,11 +22,12 @@ public:
 	void accept(uv_stream_t *server);
 	void close();
 
+	void read();
+	bool readActive() {return !readStopped;}
+	void readStop();
 	void write(std::vector<char> *buf);
 
 private:
-	void read();
-
 	// Callbacks
 	static void alloc(uv_handle_t *handle,
 			size_t suggested_size, uv_buf_t *buf);
@@ -41,5 +42,6 @@ private:
 	uv_tcp_t *client = 0;
 	uv_connect_t connect;
 	Buffer<char> cbuf;
+	bool readStopped = false;
 	bool shutdown = false;
 };

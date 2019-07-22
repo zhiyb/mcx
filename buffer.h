@@ -15,7 +15,8 @@ public:
 	void swapEnqueue(std::vector<T> &buf);
 	void swap(Buffer<T> &buf);
 
-	bool empty() {return !queue.size();}
+	size_t size() {return queue.size();}
+	bool empty() {return !size();}
 	uv_buf_t combine();
 
 	operator bool() {return !empty();}

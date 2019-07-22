@@ -1,8 +1,10 @@
 #include <cstring>
+#include <string>
 #include <stdexcept>
 #include "logging.h"
 #include "networkclient.h"
 #include "client.h"
+#include "config.h"
 
 Client::Client()
 {
@@ -31,6 +33,13 @@ void Client::init(NetworkClient *nc, uv_loop_t *loop)
 		throw std::runtime_error(uv_strerror(err));
 	wr.async.data = this;
 	this->nc = nc;
+
+	try {
+		bufNum = std::stoi(config()["client.buffers"]);
+	} catch (std::exception &e) {
+		LOG(warn, "{}", e.what());
+		bufNum = 0;
+	}
 }
 
 Config &Client::config() const
@@ -88,9 +97,13 @@ void Client::read(std::vector<char> *buf)
 	// Separate thread client mode
 	rd.mtx.lock();
 	rd.buf.enqueue(buf);
+	bool stop = bufNum && rd.buf.size() >= bufNum;
 	rd.mtx.unlock();
+
 	if (threadStatus == Running)
 		uv_async_send(&rd.async);
+	if (stop)
+		nc->readStop();
 }
 
 void Client::async()
@@ -110,6 +123,12 @@ void Client::async()
 
 	wr.buf.combine();
 	nc->write(wr.buf.dequeue());
+
+	// Read restart event
+	rd.mtx.lock();
+	if (!nc->readActive() && (!bufNum || rd.buf.size() < bufNum))
+		nc->read();
+	rd.mtx.unlock();
 }
 
 void Client::async(uv_async_t *handle)
@@ -228,6 +247,8 @@ void Client::threadAsync()
 	rd.mtx.lock();
 	rd.threadBuf.swap(rd.buf);
 	rd.mtx.unlock();
+	if (!nc->readActive())
+		uv_async_send(&wr.async);
 
 	while (!rd.threadBuf.empty()) {
 		auto *p = rd.threadBuf.dequeue();

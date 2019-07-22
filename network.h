@@ -23,6 +23,7 @@ public:
 	static std::string getString(const struct sockaddr *addr);
 
 private:
+	int test(const char *str);
 	// Callbacks
 	static void getServerInfo(uv_getaddrinfo_t *req,
 			int status, struct addrinfo *res);
